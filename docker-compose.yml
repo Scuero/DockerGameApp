@@ -1,0 +1,33 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:14
+    ports:
+      - "5460:5432"
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=admin
+      - POSTGRES_PORT=5432
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    ports:
+      - "80:80"
+
+  juego:
+    build: .
+    stdin_open: true
+    tty: true
+    ports:
+      - "3000:3000"
+    links:
+      - postgres
+
+#docker-compose up -d
+#docker exec -it app-juego-1 bash home/juego/number_guess.sh
