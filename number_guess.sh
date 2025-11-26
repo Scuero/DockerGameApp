@@ -1,7 +1,8 @@
 #!/bin/bash
 
-export PGPASSWORD=password
-PSQL="psql -h app-postgres-1 --dbname=number_guess --username=admin -p 5432 --no-align --tuples-only -c"
+export PGPASSWORD="$POSTGRES_PASSWORD"
+PSQL_BASE="psql -h postgres --dbname=$POSTGRES_DATABASE --username=$POSTGRES_USER -p ${POSTGRES_CONTAINER_PORT}"
+PSQL="$PSQL_BASE --no-align --tuples-only -c"
 
 MAIN(){
   echo "Ingresa tu nombre:"
@@ -61,24 +62,25 @@ DAR_RANDOM(){
 }
 
 CHEQUEAR_NUMERO(){
-  if [[ $NUMERO_INGRESADO == $NUMERO_RANDOM ]]
-  then
+
+  if (( CANTIDAD_INTENTOS >= 100 )); then
+    echo "Te pasaste de 100 intentos. Iniciando un nuevo juego..."
+    return 1
+  fi
+
+  if [[ $NUMERO_INGRESADO == $NUMERO_RANDOM ]]; then
     GRABAR_JUEGO_EN_BD
-    echo "Adivinista en $CANTIDAD_INTENTOS intentos. El numero secreto era $NUMERO_RANDOM. Buen trabajo!"
-    exit
+    echo "Adivinaste en $CANTIDAD_INTENTOS intentos. El numero era $NUMERO_RANDOM. Buen trabajo!"
+    return 1
   fi
 
-  if [[ $NUMERO_INGRESADO > $NUMERO_RANDOM ]]
-  then
-    echo "Es menor que eso, adivina denuevo:"
-    EMPEZAR_A_JUGAR
+  if (( NUMERO_INGRESADO > NUMERO_RANDOM )); then
+    echo "Es menor que eso, adivina de nuevo:"
+  else
+    echo "Es mayor que eso, adivina de nuevo:"
   fi
 
-  if [[ $NUMERO_INGRESADO < $NUMERO_RANDOM ]]
-  then
-    echo "Es mayor que eso, adivina denuevo:"
-    EMPEZAR_A_JUGAR
-  fi
+  return 0
 }
 
 INCREMENTAR_NUMERO_INTENTOS(){
@@ -90,15 +92,22 @@ GRABAR_JUEGO_EN_BD(){
 }
 
 EMPEZAR_A_JUGAR(){
-  read NUMERO_INGRESADO
-  if [[ ! $NUMERO_INGRESADO =~ ^[0-9]+$ ]]
-  then
-    echo "Eso no es un numero, intenta denuevo:"
-    EMPEZAR_A_JUGAR
-  else
+  while true; do
+    read NUMERO_INGRESADO
+
+    if [[ ! $NUMERO_INGRESADO =~ ^[0-9]+$ ]]; then
+      echo "Eso no es un número, intenta de nuevo:"
+      continue
+    fi
+
     INCREMENTAR_NUMERO_INTENTOS
     CHEQUEAR_NUMERO
-  fi
+    if [[ $? -eq 1 ]]; then
+      break
+    fi
+  done
 }
 
-MAIN
+while true; do
+  MAIN
+done
